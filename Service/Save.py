@@ -1,7 +1,6 @@
 '''
-Utilisée pour sauver une grille dans le fichier /Data/save.txt
-Ecrase la précedente partie. Il ne peut y avoir qu'une sauvegarde
-(Possible d'en faire plusieurs, mais nous avons opté pour 1 sauvegarde)
+Used to save a grid in /Data/save.txt
+Erases previous save, there can only be one save
 '''
 import json
 
