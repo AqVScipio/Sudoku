@@ -1,7 +1,3 @@
-'''
-Us
-'''
-
 import json
 from random import randrange
 

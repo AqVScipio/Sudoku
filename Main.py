@@ -32,6 +32,7 @@ def start(size = 9, load = False):
 
     sudoku,answerSheet = None, None
 
+    # Check if we load from save or random new grid
     if load: sudoku,answerSheet = loadFromJSON()
     else: sudoku = getNewGrid(size)
 
