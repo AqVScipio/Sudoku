@@ -1,7 +1,3 @@
-'''
-Used to save a grid in /Data/save.txt
-Erases previous save, there can only be one save
-'''
 import json
 from json import JSONEncoder
 from io import StringIO
@@ -10,6 +6,10 @@ class DataToSaveEncoder(JSONEncoder):
     def default(self,o):
         return o.__dict__
 
+'''
+Used to save a grid in /Data/save.txt
+Erases previous save, there can only be one save
+'''
 def saveGrid(data):
 
     # with open('./Data/save.txt', 'w') as outfile:
