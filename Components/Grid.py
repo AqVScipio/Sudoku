@@ -3,7 +3,7 @@ import time
 from math import sqrt
 from Entities.Color import *
 from Entities.DataToSave import *
-from Entities.SuccessMessage import *
+from Entities.Answer import *
 from Service.Save import *
 
 pygame.font.init()
@@ -25,28 +25,27 @@ class Grid:
         
         self.__answerSheet = self.__setAnswerSheet(answerSheet)
         self.setDataToSave()
-        self.setSuccessMessage('', Color(0,0,0))
 
     def __setAnswerSheet(self, answerSheet):
+        sheet = [[Answer() for i in range(self.__size)] for j in range(self.__size)]
         if answerSheet != None:
-            return answerSheet
-        else:
-            return [[[] for i in range(self.__size)] for j in range(self.__size)]
+            for i in range(len(sheet)):
+                for j in range(len(sheet[i])):
+                    sheet[i][j].setAnswers(answerSheet[i][j]['answers'])
+                    sheet[i][j].setValid(answerSheet[i][j]['valid'])
+        
+        return sheet
+        #return [[Answer() for i in range(self.__size)] for j in range(self.__size)]
 
-    def __setAnswer(self, value):
-        if value in self.__answerSheet[self.__selected["row"]][self.__selected["col"]]:
-            self.__answerSheet[self.__selected["row"]][self.__selected["col"]].remove(value)
-        else:
-            self.__answerSheet[self.__selected["row"]][self.__selected["col"]].append(value)
+    def __setAnswer(self, value, valid = False):
+        self.__answerSheet[self.__selected["row"]][self.__selected["col"]].setAnswer(value)
+        self.__answerSheet[self.__selected["row"]][self.__selected["col"]].setValid(valid)
 
     def getDataToSave(self):
         return self.__save
     
     def setDataToSave(self):
         self.__save = DataToSave(self.__board, self.__answerSheet)
-
-    def setSuccessMessage(self, msg, color):
-        self.__successMessage = SuccessMessage(msg, color)
 
     def __setSelectedNode(self, row, col):
         # Reset all other
@@ -104,6 +103,7 @@ class Grid:
                 clicked = self.__clickNode(pos)
                 if clicked:
                     self.__setSelectedNode(clicked[0], clicked[1])
+                    self.__checkForAutoComplete()
                     key = None
         
         self.__assessInput(key)
@@ -139,9 +139,6 @@ class Grid:
                 value = self.__board[i][j]['valeur']
                 self.__drawNode(value, j, i)
 
-        if len(self.__successMessage.getMsg()) > 0:
-            self.displaySuccessMessage(False)
-
     '''
     Takes care of the text in each Node
     '''
@@ -156,21 +153,25 @@ class Grid:
 
         # Draw answer(s) in a Node
         node = self.__answerSheet[row][col]
-        if len(node) > 0:
+        if len(node.getAnswer()) > 0:
             # If only one anwser, draw it in the center of the Node
-            if len(node) == 1:
-                text = fnt.render(node[0], 1, (0,191,255))
+            # The color of the number displayed in the Node depends is set based
+            # on the veracity of the answer given
+            if len(node.getAnswer()) == 1:
+                answerColor = Color(0,191,255)
+                if node.getValid(): answerColor = Color(0,191,0)
+                text = fnt.render(node.getAnswer(0), 1, answerColor.values())
                 self.__win.blit(text, (x + (gap/2 - text.get_width()/2), y + (gap/2 - text.get_height()/2)))
 
             # If multiple answers, draw them in a grid format
-            elif len(node) > 1:
+            elif len(node.getAnswer()) > 1:
                 baseOffset = 5
                 incrementalOffset = self.__width / self.__size / sqrt(self.__size)
                 if self.__size == 16: baseOffset = 2
                 xOffset, yOffset = baseOffset, baseOffset
 
-                for i in range(len(node)):
-                    text = fnt_small.render(node[i], 1, (128,128,128))
+                for i in range(len(node.getAnswer())):
+                    text = fnt_small.render(node.getAnswer(i), 1, (128,128,128))
                     self.__win.blit(text, (x+xOffset, y+yOffset))
 
                     if (i+1) % sqrt(self.__size) == 0:
@@ -202,48 +203,68 @@ class Grid:
 
     '''
     Checks if wheter or not an empty node is selected
+    If an answer has been set to Valid (check()),
+    it can no longer be altered
     '''
     def __emptyNodeSelected(self):
-        return "-" in self.__board[self.__selected["row"]][self.__selected["col"]]['valeur']
-
-    '''
-    Checks if the grid is filles and contains no error
-    Used to set the corresponding message to display
-    '''
-    def __gridIsFilled(self):
-        errorFound = False
-
-        for i in range(len(self.__board)):
-            for j in range(len(self.__board[i])):
-                if "-" in self.__board[i][j]['valeur']: 
-                    if len(self.__answerSheet[i][j]) == 1:
-                        if str(self.__board[i][j]['valeur']).replace('-', '') != self.__answerSheet[i][j][0]:
-                            errorFound = True
-                    else:
-                        return False
-        
-        if errorFound:
-            self.setSuccessMessage('Mistakes were made !', Color(200,0,0))
-        else:
-            self.setSuccessMessage('Success !', Color(0,200,0))
-
+        if self.__answerSheet[self.__selected["row"]][self.__selected["col"]].getValid(): return False
+        if "-" not in self.__board[self.__selected["row"]][self.__selected["col"]]['valeur']: return False
         return True
 
     '''
-    This function displays the corresponding message
+    Checks the board to see if answers are valid.
+    A valid Node needs to contain only one number 
+    which has to correspond to the valid answer.
     '''
-    def displaySuccessMessage(self, checkIfGridFilled = True):
-        if checkIfGridFilled:
-            if not self.__gridIsFilled():
-                self.setSuccessMessage('Grid not filled yet !', Color(200,0,0))
-        
-        fnt = pygame.font.SysFont("comicsans", 40)
-        r = self.__successMessage['color'].r
-        g = self.__successMessage['color'].g
-        b = self.__successMessage['color'].b
-        text = fnt.render(self.__successMessage['msg'], 1, (r,g,b))
+    def check(self):
+        for i in range(len(self.__board)):
+            for j in range(len(self.__board[i])):
+                if "-" in self.__board[i][j]['valeur']: 
+                    if len(self.__answerSheet[i][j].getAnswer()) == 1:
+                        if str(self.__board[i][j]['valeur']).replace('-', '') == self.__answerSheet[i][j].getAnswer(0):
+                            # If answer is correct : valid property is set to True
+                            self.__answerSheet[i][j].setValid(True)
 
-        self.__win.blit(text, (self.__width / 2 - text.get_width() / 2, self.__height + 20))
+    '''
+    Check if a section is one valid Node left to complete
+    Complete the last Node
+    '''
+    def __checkForAutoComplete(self):
+        sectionModifier = int(sqrt(self.__size))
+        # Check in which section of the grid the node belongs to
+        row = 0
+        for sqr_row in range(1, sectionModifier + 1):
+            if self.__selected["row"] / sectionModifier < sqr_row:
+                # Belongs to this row
+                row = sqr_row
+                break
+
+        col = 0
+        for sqr_col in range(1, sectionModifier + 1):
+            if self.__selected["col"] / sectionModifier < sqr_col:
+                # Belongs to this col
+                col = sqr_col
+                break
+        
+        # Check if every node in the section, except for the selected one, is valid
+        validCount = 0
+        for i in range(row * sectionModifier - sectionModifier, row * sectionModifier):
+            for j in range(col * sectionModifier - sectionModifier, col * sectionModifier):
+                # if i != self.__selected["row"] and j != self.__selected["col"]:
+                if self.__answerSheet[i][j].getValid(): 
+                    validCount += 1
+                elif '-' not in self.__board[i][j]['valeur']:
+                    validCount += 1
+                    
+        # Answers have been checked, auto complete the selected one
+        if validCount == self.__size - 1:
+            self.__setAnswer(self.__board[self.__selected["row"]][self.__selected["col"]]['valeur'].replace('-',''), True)
+
+        
+
+            
+
+
 
         
 

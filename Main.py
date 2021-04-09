@@ -1,8 +1,8 @@
 from Entities.Sudoku import *
 from Service.Load import *
-from GameInterface.Window import *
-from GameInterface.GridInterfaceSudoku import *
-from GameInterface.Navigation import *
+from Entities.Window import *
+from Components.Grid import *
+from Components.Menu import *
 from Service.Save import *
 from Service.Load import *
 import pygame
@@ -17,17 +17,17 @@ def saveGame(grid):
 
 # Loads the player's last save
 def loadGame():
-    sudoku = loadFromJSON()
-    start(len(sudoku), True)
+    start(0, True)
 
 # Checks if grid is complete
 def checkBoard(board):
-    board.displaySuccessMessage()
+    board.check()
+    #board.displaySuccessMessage()
 
 # Start the new Sudoku
 def start(size = 9, load = False):
     width = 800
-    height = width + 100
+    height = width
     window = Window(width + 300, height)
 
     sudoku,answerSheet = None, None
@@ -39,7 +39,7 @@ def start(size = 9, load = False):
     gridSurface = width
 
     board = Grid(sudoku, win, gridSurface, answerSheet)
-    nav = Navigation(win, gridSurface, newGame, loadGame, saveGame, checkBoard, board, board.getDataToSave())
+    nav = Menu(win, gridSurface, newGame, loadGame, saveGame, checkBoard, board, board.getDataToSave())
     update(board, nav)
 
 def update(board, nav):

@@ -1,4 +1,4 @@
-class DataToSave:
+class DataToSave():
 
     def __init__(self, board, answerSheet):
         self.__board = board
